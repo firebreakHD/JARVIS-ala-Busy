@@ -1,0 +1,19 @@
+configuration:
+  hermes_base_url:
+    name: Hermes API Server
+    description: Basisadresse des Hermes API Servers ohne /v1.
+  hermes_api_key:
+    name: Hermes API-Key
+    description: Bearer-Key des geschützten Hermes API Servers.
+  access_password:
+    name: J.A.R.V.I.S.-Passwort
+    description: Passwort für den Zugriff auf die Oberfläche im Heimnetz.
+  whisper_cpp_path:
+    name: Whisper.cpp-Programm
+    description: Optionaler Pfad zur lokalen Whisper.cpp-Binärdatei für den Voice Mode.
+  whisper_model_path:
+    name: Whisper-Modell
+    description: Optionaler Pfad zu einem lokal installierten Whisper-Modell.
+  ffmpeg_path:
+    name: ffmpeg-Programm
+    description: Pfad zu ffmpeg im Add-on-Container.

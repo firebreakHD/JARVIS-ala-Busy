@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090d13">
+  <meta name="description" content="Privater J.A.R.V.I.S.-Chat mit lokalem TTS und Hermes-Agent.">
+  <title>J.A.R.V.I.S. · Chat</title>
+  <link id="app-stylesheet" rel="stylesheet" href="/assets/app.css">
+  <script>
+    // Keep the visual preview styled when this file is opened directly.
+    if (location.protocol === 'file:') {
+      document.getElementById('app-stylesheet').href = new URL('./app.css', location.href).href;
+    }
+  </script>
+</head>
+<body>
+  <section class="auth-screen" id="auth-screen" hidden>
+    <form class="auth-card" id="login-form">
+      <div class="brand-mark"><span></span><span></span><span></span></div>
+      <p class="eyebrow">SICHERER ZUGRIFF</p>
+      <h1>Willkommen zurück.</h1>
+      <p>Gib dein J.A.R.V.I.S.-Passwort ein.</p>
+      <input id="login-password" type="password" autocomplete="current-password" placeholder="Passwort" required>
+      <div class="auth-error" id="login-error" role="alert"></div>
+      <button class="primary-button" type="submit">Anmelden <span>→</span></button>
+    </form>
+  </section>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="brand-mark"><span></span><span></span><span></span></div><div><strong>J.A.R.V.I.S.</strong><small>PERSONAL INTERFACE</small></div><button class="icon-button sidebar-close" id="sidebar-close" aria-label="Menü schließen">×</button></div>
+      <button class="new-chat" id="new-chat"><span>＋</span> Neuer Chat <kbd>⌘ K</kbd></button>
+      <div class="side-label">LETZTE GESPRÄCHE</div>
+      <div class="session-list" id="session-list"></div>
+      <div class="sidebar-bottom"><span class="status-dot" id="connection-dot"></span><span id="connection-label">Hermes wird geprüft</span><button class="icon-button logout-button" id="logout" title="Abmelden" aria-label="Abmelden" hidden>↪</button><button class="icon-button" id="refresh-status" title="Verbindung prüfen" aria-label="Verbindung prüfen">↻</button></div>
+    </aside>
+
+    <main class="main-panel">
+      <header class="topbar">
+        <button class="icon-button menu-button" id="menu-button" aria-label="Menü öffnen">☰</button>
+        <div class="mode-switch" role="tablist" aria-label="Bedienmodus">
+          <button class="mode-tab active" id="chat-mode" role="tab" aria-selected="true">⌨ <span>Chat</span></button>
+          <button class="mode-tab" id="voice-mode" role="tab" aria-selected="false">◉ <span>Voice Mode</span></button>
+        </div>
+        <div class="top-actions">
+          <button class="icon-button audio-stop" id="stop-audio" title="Sprachausgabe stoppen" aria-label="Sprachausgabe stoppen">■</button>
+          <button class="icon-button" id="settings-toggle" title="Audioeinstellungen" aria-label="Audioeinstellungen">⚙</button>
+        </div>
+      </header>
+
+      <section class="settings-panel" id="settings-panel" hidden>
+        <div class="setting-row"><div><strong>Automatisch vorlesen</strong><small>Gesprochene Sätze kommen bereits während des Streams.</small></div><label class="toggle"><input type="checkbox" id="tts-enabled"><span></span></label></div>
+        <label class="range-row"><span>Lautstärke</span><input id="tts-volume" type="range" min="0" max="1" step="0.05" value="0.85"><output id="volume-value">85 %</output></label>
+        <label class="voice-row"><span>Stimme</span><select id="tts-voice"><option value="">Systemstimme (Deutsch)</option></select></label>
+        <p class="settings-note">Die Sprachausgabe nutzt verfügbare Stimmen des Geräts. Es wird kein TTS-Dienst kontaktiert.</p>
+      </section>
+
+      <div class="chat-scroll" id="chat-scroll">
+        <section class="welcome" id="welcome">
+          <div class="orb"><div class="orb-core"></div><i></i><i></i><i></i></div>
+          <p class="eyebrow">BEREIT, WENN DU ES BIST</p>
+          <h1>Guten Tag.</h1>
+          <p class="welcome-copy">Womit kann ich dir helfen?</p>
+          <div class="suggestions"><button data-prompt="Fasse mir den aktuellen Stand zusammen.">Zusammenfassen <span>↗</span></button><button data-prompt="Hilf mir, einen Plan für heute zu erstellen.">Tagesplan erstellen <span>↗</span></button><button data-prompt="Ich möchte eine Idee festhalten.">Eine Idee festhalten <span>↗</span></button></div>
+        </section>
+        <div class="messages" id="messages" aria-live="polite"></div>
+      </div>
+
+      <footer class="composer-area">
+        <div class="voice-banner" id="voice-banner" hidden><span class="live-pulse"></span><span id="voice-status">Voice Mode ist bereit</span><button class="text-button" id="mute-mic">Mikrofon stummschalten</button><button class="text-button danger-text" id="end-voice">Beenden</button></div>
+        <div class="voice-setup" id="voice-setup" hidden><div class="mic-symbol">◉</div><div><strong>Freies Sprechen starten</strong><p>Das Mikrofon wird erst nach deinem Klick aktiviert. Sprache wird lokal mit Whisper.cpp erkannt.</p></div><button class="primary-button" id="start-voice">Voice Mode starten</button></div>
+        <form class="composer" id="composer">
+          <textarea id="message-input" rows="1" placeholder="Nachricht an J.A.R.V.I.S…" aria-label="Nachricht eingeben"></textarea>
+          <div class="composer-tools"><span class="composer-hint">Enter zum Senden <span>·</span> Shift + Enter für neue Zeile</span><div class="composer-buttons"><button type="button" class="icon-button stop-generation" id="stop-generation" title="Hermes-Anfrage stoppen" aria-label="Hermes-Anfrage stoppen" hidden>■</button><button type="submit" class="send-button" id="send-button" aria-label="Nachricht senden"><span>Senden</span><b>↑</b></button></div></div>
+        </form>
+        <p class="footer-note">J.A.R.V.I.S. nutzt deinen konfigurierten Hermes-Agenten. Prüfe wichtige Informationen selbst.</p>
+      </footer>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/assets/app.js"></script>
+</body>
+</html>

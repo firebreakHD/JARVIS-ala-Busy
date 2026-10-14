@@ -1,0 +1,27 @@
+name: Validate Home Assistant add-on
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate add-on metadata and JSON
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          package = json.loads(Path('jarvis/package.json').read_text(encoding='utf-8'))
+          assert package['engines']['node'] == '>=20'
+          config = Path('jarvis/config.yaml').read_text(encoding='utf-8')
+          for required in ('slug: jarvis', 'version:', 'arch:', 'ports:', 'schema:'):
+              assert required in config, f'missing {required}'
+          assert Path('repository.yaml').is_file()
+          assert Path('jarvis/Dockerfile').is_file()
+          print('Add-on files present.')
+          PY
