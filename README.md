@@ -26,6 +26,6 @@ Text-zu-Sprache läuft über die lokalen Stimmen des Browsers beziehungsweise Be
 
 ## GitHub-Veröffentlichung
 
-Das Repository ist `https://github.com/firebreakHD/JARVIS-ala-Busy`. Lokale Änderungen mit GitHub Desktop committen und pushen. Danach im HA-Add-on-Store nach Updates suchen und J.A.R.V.I.S. auf Version `0.1.1` aktualisieren. Falls das Update noch nicht erscheint, die Repository-Liste im Store aktualisieren. Auf der Add-on-Seite **In der Seitenleiste anzeigen** aktivieren.
+Das Repository ist `https://github.com/firebreakHD/JARVIS-ala-Busy`. Lokale Änderungen mit GitHub Desktop committen und pushen. Danach im HA-Add-on-Store nach Updates suchen und J.A.R.V.I.S. auf Version `0.1.2` aktualisieren. Falls das Update noch nicht erscheint, die Repository-Liste im Store aktualisieren. Auf der Add-on-Seite **In der Seitenleiste anzeigen** aktivieren.
 
 Weitere technische Hinweise stehen in [jarvis/DOCS.md](jarvis/DOCS.md).

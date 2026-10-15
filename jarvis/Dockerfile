@@ -10,4 +10,5 @@ ENV DATA_DIR=/data
 ENV JARVIS_ADDON=true
 EXPOSE 8787 8099
 
-CMD ["node", "server.mjs"]
+# s6-overlay v3 clears CMD's environment unless with-contenv restores it.
+CMD ["/usr/bin/with-contenv", "node", "server.mjs"]

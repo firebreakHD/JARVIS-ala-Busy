@@ -23,11 +23,24 @@ Im Add-on lauscht der Server auf `0.0.0.0`, damit der HA-Proxy und die Portweite
 
 Die HTML-Basisadresse wird aus dem Ingress-Pfad des vertrauenswürdigen Proxys eingesetzt. CSS, JavaScript, Modulimporte, Anmeldung, Chatstream und Voice-Anfragen verwenden diese Basisadresse. `ingress_stream` ist aktiviert.
 
-Für das Update: Änderungen mit GitHub Desktop committen/pushen, anschließend im HA-Add-on-Store nach Updates suchen und `0.1.1` installieren. Danach **In der Seitenleiste anzeigen** aktivieren und für direkten Browserzugriff `access_password` setzen. Ein bloßer Neustart der alten Version übernimmt die lokalen Codeänderungen nicht.
+Für das Update: Änderungen mit GitHub Desktop committen/pushen, anschließend im HA-Add-on-Store nach Updates suchen und `0.1.2` installieren. Danach **In der Seitenleiste anzeigen** aktivieren und für direkten Browserzugriff `access_password` setzen. Ein bloßer Neustart der alten Version übernimmt die lokalen Codeänderungen nicht.
+
+### Fehler: App nicht bereit, obwohl der Server lauscht
+
+Eine Logzeile mit `127.0.0.1:8787; data: /app/data` bedeutet, dass der Server mit Entwicklungswerten statt den Add-on-Einstellungen läuft. Im s6-overlay-v3-Basisimage erhält der normale `CMD` nur eine minimale Umgebung. Ab `0.1.2` stellt `/usr/bin/with-contenv` die Docker-Umgebung für Node wieder her. Damit werden auch `/data/options.json` und der HA-Ingress-Modus verwendet. Nach Installation der neuen Version müssen diese beiden Startzeilen erscheinen:
+
+```text
+J.A.R.V.I.S. listening on 0.0.0.0:8787; data: /data
+J.A.R.V.I.S. Home Assistant ingress listening on 8099
+```
+
+Die Reihenfolge der Zeilen kann abweichen. Bleiben die alten Werte nach einem Update sichtbar, wurde noch nicht der neue Container gestartet. Im Add-on die installierte Version kontrollieren und bei Bedarf **Neu erstellen** ausführen; die Anwendung dafür nicht deinstallieren.
 
 ## Prüfung
 
 Im Verzeichnis `jarvis` führt `npm test` die Zugriffstests aus. Sie prüfen Ingress-Pfade, die Supervisor-Erkennung, Ablehnung gefälschter Proxy-Header, beide Listener, Passwortschutz, JavaScript/CSS-Auslieferung und Sitzungsdaten nach Serverneustart. Testdaten liegen in einem isolierten, automatisch entfernten Unterordner von `jarvis/data/`. Eine echte HA-Installation und Hermes-Verbindung sind zusätzlich am Zielgerät zu prüfen.
+
+GitHub Actions führt zusätzlich `bash jarvis/test/container-startup.sh` vom Repository-Stamm aus. Dieser Test baut das Dockerimage und startet es über dessen echten s6-Einstiegspunkt, ohne die Add-on-Umgebung manuell in Node zu setzen. Er prüft die erreichbaren Listener und `/data` als Datenpfad. Lokal benötigt dieser Test einen laufenden Docker-Daemon.
 
 ## Entwicklung außerhalb von Home Assistant
 

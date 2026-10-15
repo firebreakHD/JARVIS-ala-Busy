@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2 – 2026-10-15
+
+- Container startet Node über `with-contenv`, damit s6-overlay die Docker-Umgebung an den Server weitergibt. Zuvor gingen `JARVIS_ADDON=true` und `DATA_DIR=/data` verloren: Der Server startete nur auf `127.0.0.1:8787`, las keine HA-Optionen und öffnete keinen Ingress-Port.
+- GitHub Actions baut und startet zusätzlich den echten Add-on-Container und prüft Direktzugriff, Ingress-Listener und Datenpfad.
+
 ## 0.1.1 – 2026-10-15
 
 - Home-Assistant-Ingress mit eigenem Seitenleisteneintrag und Streaming aktiviert.

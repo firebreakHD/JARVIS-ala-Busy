@@ -13,7 +13,7 @@
 
 ## Noch offen
 
-- Repository-Adresse korrigiert. Änderungen an `0.1.1` sind lokal; Commit/Push über GitHub Desktop und HA-Update stehen aus.
+- Repository-Adresse korrigiert. `0.1.2` behebt den anhand der Nutzerlogs erkannten Verlust der Container-Umgebung beim s6-Start. Diese Korrektur ist lokal; Commit/Push über GitHub Desktop und HA-Update stehen aus.
 - Zugriffstests und Syntaxprüfungen bestehen lokal. Docker-Daemon ist auf diesem PC nicht erreichbar; Container-Build und echter HA-Ingress sind noch nicht verifiziert.
 - Hermes und Whisper sind in dieser Arbeitsumgebung nicht konfiguriert; echte Verbindung, Tool-Abbruch, Mikrofon und Audio konnten nicht verifiziert werden.
 - Mobile Spracherkennung benötigt eine lokal installierte Whisper.cpp-Binärdatei und ein Modell. iPhone-Mikrofonzugriff erfordert HTTPS.

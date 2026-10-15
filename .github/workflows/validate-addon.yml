@@ -34,3 +34,5 @@ jobs:
           assert Path('jarvis/Dockerfile').is_file()
           print('Add-on files present.')
           PY
+      - name: Build and verify the actual s6 container startup
+        run: bash jarvis/test/container-startup.sh
