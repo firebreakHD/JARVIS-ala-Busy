@@ -7,7 +7,7 @@ configuration:
     description: Bearer-Key des geschützten Hermes API Servers.
   access_password:
     name: J.A.R.V.I.S.-Passwort
-    description: Passwort für den Zugriff auf die Oberfläche im Heimnetz.
+    description: Passwort für den direkten Browserzugriff über den Netzwerkport. In der HA-Seitenleiste übernimmt Home Assistant die Anmeldung.
   whisper_cpp_path:
     name: Whisper.cpp-Programm
     description: Optionaler Pfad zur lokalen Whisper.cpp-Binärdatei für den Voice Mode.

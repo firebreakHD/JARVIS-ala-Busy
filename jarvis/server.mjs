@@ -5,6 +5,7 @@ import os from 'node:os';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { isSupervisor, renderIndex } from './web-access.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(root, 'public');
@@ -17,8 +18,9 @@ const hermesBase = (process.env.HERMES_BASE_URL || addonOptions.hermes_base_url 
 const hermesApiKey = process.env.HERMES_API_KEY || addonOptions.hermes_api_key || '';
 const accessPassword = process.env.JARVIS_ACCESS_PASSWORD || addonOptions.access_password || '';
 const cookieSecret = randomBytes(32);
-const host = process.env.HOST || addonOptions.host || (accessPassword ? '0.0.0.0' : '127.0.0.1');
-if (host !== '127.0.0.1' && host !== '::1' && !accessPassword) throw new Error('Für Netzwerkzugriff muss JARVIS_ACCESS_PASSWORD gesetzt sein.');
+const addonMode = process.env.JARVIS_ADDON === 'true';
+const host = process.env.HOST || addonOptions.host || (addonMode || accessPassword ? '0.0.0.0' : '127.0.0.1');
+if (!addonMode && host !== '127.0.0.1' && host !== '::1' && !accessPassword) throw new Error('Für Netzwerkzugriff muss JARVIS_ACCESS_PASSWORD gesetzt sein.');
 const whisperPath = process.env.WHISPER_CPP_PATH || addonOptions.whisper_cpp_path || '';
 const whisperModel = process.env.WHISPER_MODEL_PATH || addonOptions.whisper_model_path || '';
 const ffmpegPath = process.env.FFMPEG_PATH || addonOptions.ffmpeg_path || 'ffmpeg';
@@ -74,14 +76,15 @@ function passwordsMatch(candidate) {
   return timingSafeEqual(expected, received);
 }
 
-const server = http.createServer(async (req, res) => {
+const handleRequest = async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   try {
     if (req.method === 'GET' && url.pathname === '/api/auth/status') {
-      const authenticated = !accessPassword || sessionCookie(req, res);
-      return json(res, 200, { passwordRequired: Boolean(accessPassword), authenticated });
+      const authenticated = Boolean(req.jarvisIngress) || (!accessPassword && !addonMode) || sessionCookie(req, res);
+      return json(res, 200, { passwordRequired: !req.jarvisIngress && (addonMode || Boolean(accessPassword)), authenticated, setupRequired: !req.jarvisIngress && addonMode && !accessPassword });
     }
     if (req.method === 'POST' && url.pathname === '/api/login') {
+      if (addonMode && !accessPassword) return json(res, 503, { error: 'Bitte access_password in der Add-on-Konfiguration setzen oder J.A.R.V.I.S. über die Home-Assistant-Seitenleiste öffnen.' });
       const body = JSON.parse((await readBody(req)).toString('utf8'));
       if (!accessPassword || !passwordsMatch(body.password)) return json(res, 401, { error: 'Passwort ist nicht korrekt.' });
       setSessionCookie(req, res, Date.now() + 12 * 60 * 60 * 1000);
@@ -90,7 +93,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/logout') {
       setSessionCookie(req, res, 0); return json(res, 200, { authenticated: false });
     }
-    if (accessPassword && url.pathname.startsWith('/api/') && !['/api/auth/status', '/api/login'].includes(url.pathname) && !sessionCookie(req, res)) {
+    if (!req.jarvisIngress && (accessPassword || addonMode) && url.pathname.startsWith('/api/') && !sessionCookie(req, res)) {
       return json(res, 401, { error: 'Bitte zuerst anmelden.' });
     }
     if (req.method === 'GET' && url.pathname === '/api/config') {
@@ -256,13 +259,13 @@ const server = http.createServer(async (req, res) => {
       } finally { await fs.rm(tempDir, { recursive: true, force: true }); }
     }
     if (req.method === 'GET' && url.pathname === '/') {
-      const html = await fs.readFile(path.join(publicDir, 'index.html'));
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(html);
+      const html = renderIndex(await fs.readFile(path.join(publicDir, 'index.html'), 'utf8'), req);
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); return res.end(html);
     }
     if (req.method === 'GET' && url.pathname.startsWith('/assets/')) {
       const name = path.basename(url.pathname.slice('/assets/'.length));
       const file = path.join(publicDir, name);
-      try { const content = await fs.readFile(file); const types = { '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' }; res.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream' }); return res.end(content); }
+      try { const content = await fs.readFile(file); const types = { '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' }; res.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream' }); return res.end(content); }
       catch { return json(res, 404, { error: 'Datei nicht gefunden.' }); }
     }
     return json(res, 404, { error: 'Endpunkt nicht gefunden.' });
@@ -272,7 +275,8 @@ const server = http.createServer(async (req, res) => {
     console.error('Request failed:', error.message);
     return json(res, error.status || 500, { error: error.status ? error.message : 'Interner Serverfehler.' });
   }
-});
+};
+const server = http.createServer(handleRequest);
 
 function hermesHeaders() {
   const headers = { 'X-Hermes-Session-Key': process.env.HERMES_SESSION_KEY || 'jarvis:main' };
@@ -290,3 +294,12 @@ function run(command, args) {
 }
 
 server.listen(port, host, () => console.log(`J.A.R.V.I.S. listening on ${host}:${port}; data: ${dataDir}`));
+
+if (addonMode) {
+  const ingressPort = Number(process.env.INGRESS_PORT || 8099);
+  http.createServer((req, res) => {
+    if (!isSupervisor(req)) return json(res, 403, { error: 'Dieser Zugang ist ausschließlich für Home Assistant Ingress.' });
+    req.jarvisIngress = true;
+    return handleRequest(req, res);
+  }).listen(ingressPort, '0.0.0.0', () => console.log(`J.A.R.V.I.S. Home Assistant ingress listening on ${ingressPort}`));
+}

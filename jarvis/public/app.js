@@ -1,3 +1,5 @@
+import { apiUrl } from './api-url.mjs';
+
 const $ = (selector) => document.querySelector(selector);
 const ui = {
   sessions: $('#session-list'), messages: $('#messages'), welcome: $('#welcome'), scroll: $('#chat-scroll'),
@@ -85,7 +87,7 @@ function renderMessages() {
   requestAnimationFrame(() => { ui.scroll.scrollTop = ui.scroll.scrollHeight; });
 }
 async function api(url, options = {}) {
-  const response = await fetch(url, { ...options, headers: { ...(options.body instanceof Blob ? {} : { 'Content-Type': 'application/json' }), ...options.headers } });
+  const response = await fetch(apiUrl(url), { ...options, headers: { ...(options.body instanceof Blob ? {} : { 'Content-Type': 'application/json' }), ...options.headers } });
   if (!response.ok) { let data = {}; try { data = await response.json(); } catch {} throw new Error(data.error || `Serverfehler (${response.status}).`); }
   return response.status === 204 ? null : response.json();
 }
@@ -125,7 +127,7 @@ async function checkStatus() {
     else {
       const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 3500);
       try {
-        const response = await fetch(`${window.location.origin}/api/hermes-health`, { signal: controller.signal });
+        const response = await fetch(apiUrl('/api/hermes-health'), { signal: controller.signal });
         setConnection(response.ok, response.ok ? 'Hermes verbunden' : 'Hermes nicht erreichbar');
       } catch { setConnection(false, 'Hermes konfiguriert · nicht erreichbar'); }
       finally { clearTimeout(timeout); }
@@ -191,7 +193,7 @@ async function sendMessage(text) {
   const conversation = currentSession.messages.filter((message) => ['user', 'assistant'].includes(message.role) && !message.error && !message.interrupted).slice(0, -1).map(({ role, content }) => ({ role, content }));
   try {
     const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const response = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: currentSession.id, requestId, messages: conversation }), signal: controller.signal });
+    const response = await fetch(apiUrl('/api/chat'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: currentSession.id, requestId, messages: conversation }), signal: controller.signal });
     if (!response.ok) { let detail = {}; try { detail = await response.json(); } catch {} throw new Error(detail.error || `Hermes-Anfrage fehlgeschlagen (${response.status}).`); }
     if (!response.body) throw new Error('Der Browser unterstützt den Antwortstream nicht.');
     const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = ''; let finished = false;
@@ -264,7 +266,7 @@ function finishRecording() {
 }
 async function transcribe(blob) {
   try {
-    const response = await fetch('/api/voice/transcribe', { method: 'POST', headers: { 'Content-Type': blob.type || 'audio/webm' }, body: blob });
+    const response = await fetch(apiUrl('/api/voice/transcribe'), { method: 'POST', headers: { 'Content-Type': blob.type || 'audio/webm' }, body: blob });
     const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Spracherkennung fehlgeschlagen.');
     if (data.text?.trim()) { ui.input.value = data.text.trim(); ui.input.dispatchEvent(new Event('input')); ui.voiceStatus.textContent = 'Sende deine Nachricht…'; await sendMessage(data.text); }
     else ui.voiceStatus.textContent = 'Ich habe nichts verstanden · versuch es noch einmal';
@@ -324,5 +326,9 @@ $('#logout').addEventListener('click', async () => {
 });
 try {
   const auth = await api('/api/auth/status'); $('#logout').hidden = !auth.passwordRequired;
-  if (auth.authenticated) await initializeApp(); else $('#auth-screen').hidden = false;
+  if (auth.authenticated) await initializeApp();
+  else {
+    $('#auth-screen').hidden = false;
+    if (auth.setupRequired) $('#login-error').textContent = 'Bitte zuerst access_password in der Home-Assistant-Add-on-Konfiguration setzen. Der HA-Seitenleistenzugriff funktioniert bereits ohne dieses Passwort.';
+  }
 } catch (error) { setConnection(false, 'Lokaler Server nicht erreichbar'); notify(error.message); }

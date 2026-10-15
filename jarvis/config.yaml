@@ -1,10 +1,16 @@
 name: J.A.R.V.I.S.
 slug: jarvis
 description: Lokaler Hermes-Chat mit Desktop-Textmodus, TTS und optionalem Voice Mode.
-version: "0.1.0"
+version: "0.1.1"
 startup: services
 boot: auto
 init: false
+ingress: true
+ingress_port: 8099
+ingress_stream: true
+panel_title: J.A.R.V.I.S.
+panel_icon: mdi:robot-outline
+panel_admin: false
 arch:
   - amd64
   - aarch64
@@ -18,6 +24,7 @@ map:
 options:
   hermes_base_url: ""
   hermes_api_key: ""
+  access_password: ""
   whisper_cpp_path: ""
   whisper_model_path: ""
   ffmpeg_path: /usr/bin/ffmpeg

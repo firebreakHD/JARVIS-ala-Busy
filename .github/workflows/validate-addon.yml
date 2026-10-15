@@ -10,6 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check JavaScript and web access
+        working-directory: jarvis
+        run: |
+          node --check server.mjs
+          node --check public/app.js
+          npm test
       - name: Validate add-on metadata and JSON
         run: |
           python - <<'PY'
