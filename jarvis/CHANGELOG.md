@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3 – 2026-10-15
+
+- Hermes-Prüfung testet die geschützte API-Modellliste und unterscheidet fehlende Konfiguration, abgelehnte Schlüssel, falsche API-Adressen, DNS-Fehler, geschlossene Ports und Zeitüberschreitungen.
+- Fehlerursache erscheint dauerhaft über dem Chat, statt nur einer allgemeinen Offline-Meldung.
+- Browser wartet länger als die serverseitige Verbindungsprüfung. Optionale Fähigkeiten werden erst für eine Chat-Anfrage geprüft und verzögern den Verbindungsstatus nicht.
+- Eingefügte Leerzeichen und ein abschließendes `/v1` werden in der Basisadresse bereinigt.
+
 ## 0.1.2 – 2026-10-15
 
 - Container startet Node über `with-contenv`, damit s6-overlay die Docker-Umgebung an den Server weitergibt. Zuvor gingen `JARVIS_ADDON=true` und `DATA_DIR=/data` verloren: Der Server startete nur auf `127.0.0.1:8787`, las keine HA-Optionen und öffnete keinen Ingress-Port.

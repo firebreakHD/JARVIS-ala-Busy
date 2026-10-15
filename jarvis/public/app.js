@@ -121,15 +121,23 @@ async function openSession(id) {
   } catch (error) { notify(error.message); }
 }
 async function checkStatus() {
+  const detail = $('#connection-error');
+  detail.hidden = true;
+  const showError = (text) => { detail.textContent = text; detail.hidden = false; };
   try {
     cfg = await api('/api/config');
-    if (!cfg.hermesConfigured) setConnection(false, 'Hermes konfigurieren');
+    if (!cfg.hermesConfigured) {
+      setConnection(false, 'Hermes konfigurieren');
+      showError(!cfg.hermesBaseConfigured ? 'Bitte hermes_base_url in der JARVIS-Add-on-Konfiguration setzen: Adresse des Hermes-API-Servers (interner Port 8642).' : 'Bitte hermes_api_key in der JARVIS-Add-on-Konfiguration setzen: denselben Wert wie api_server_key bei Hermes.');
+    }
     else {
-      const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 3500);
+      const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 8000);
       try {
         const response = await fetch(apiUrl('/api/hermes-health'), { signal: controller.signal });
+        const result = await response.json();
         setConnection(response.ok, response.ok ? 'Hermes verbunden' : 'Hermes nicht erreichbar');
-      } catch { setConnection(false, 'Hermes konfiguriert · nicht erreichbar'); }
+        if (!response.ok) showError(result.error || 'Hermes-Prüfung fehlgeschlagen.');
+      } catch { setConnection(false, 'Hermes-Prüfung fehlgeschlagen'); showError('Die Verbindungsprüfung wurde unterbrochen. Mit ↻ erneut prüfen; bei erneutem Fehler das JARVIS-Protokoll prüfen.'); }
       finally { clearTimeout(timeout); }
     }
     ui.voiceSetup.hidden = true;

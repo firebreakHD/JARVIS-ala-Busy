@@ -13,6 +13,8 @@
 
 ## Noch offen
 
+- `0.1.3` verbessert die Hermes-Verbindungsdiagnose und korrigiert die Wartezeit. Sechs lokale Tests bestehen; echte Hermes-Adresse und Konfiguration auf dem HA-Gerät sind noch nicht bekannt. Eine funktionierende Live-Verbindung ist nicht nachgewiesen.
+
 - Repository-Adresse korrigiert. `0.1.2` behebt den anhand der Nutzerlogs erkannten Verlust der Container-Umgebung beim s6-Start. Diese Korrektur ist lokal; Commit/Push über GitHub Desktop und HA-Update stehen aus.
 - Zugriffstests und Syntaxprüfungen bestehen lokal. Docker-Daemon ist auf diesem PC nicht erreichbar; Container-Build und echter HA-Ingress sind noch nicht verifiziert.
 - Hermes und Whisper sind in dieser Arbeitsumgebung nicht konfiguriert; echte Verbindung, Tool-Abbruch, Mikrofon und Audio konnten nicht verifiziert werden.

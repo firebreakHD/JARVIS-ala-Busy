@@ -6,6 +6,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { isSupervisor, renderIndex } from './web-access.mjs';
+import { normalizeHermesBase, probeHermes } from './hermes-connection.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(root, 'public');
@@ -14,8 +15,8 @@ const storeFile = path.join(dataDir, 'sessions.json');
 const port = Number(process.env.PORT || 8787);
 let addonOptions = {};
 try { addonOptions = JSON.parse(await fs.readFile(path.join(dataDir, 'options.json'), 'utf8')); } catch { /* Outside Home Assistant, configure with environment variables. */ }
-const hermesBase = (process.env.HERMES_BASE_URL || addonOptions.hermes_base_url || '').replace(/\/+$/, '');
-const hermesApiKey = process.env.HERMES_API_KEY || addonOptions.hermes_api_key || '';
+const hermesBase = normalizeHermesBase(process.env.HERMES_BASE_URL || addonOptions.hermes_base_url);
+const hermesApiKey = (process.env.HERMES_API_KEY || addonOptions.hermes_api_key || '').trim();
 const accessPassword = process.env.JARVIS_ACCESS_PASSWORD || addonOptions.access_password || '';
 const cookieSecret = randomBytes(32);
 const addonMode = process.env.JARVIS_ADDON === 'true';
@@ -100,23 +101,8 @@ const handleRequest = async (req, res) => {
       return json(res, 200, { hermesConfigured: Boolean(hermesBase && hermesApiKey), hermesBaseConfigured: Boolean(hermesBase), hermesAuthConfigured: Boolean(hermesApiKey), localSttConfigured: Boolean(whisperPath && whisperModel), localSttReason: whisperPath && whisperModel ? '' : 'Whisper.cpp und ein lokales Modell müssen am Server konfiguriert sein.', defaultMode: 'chat' });
     }
     if (req.method === 'GET' && url.pathname === '/api/hermes-health') {
-      if (!hermesBase) return json(res, 503, { error: 'Hermes nicht konfiguriert.' });
-      if (!hermesApiKey) return json(res, 503, { error: 'HERMES_API_KEY fehlt. Der Hermes API Server muss mit einem Bearer-Key geschützt sein.' });
-      const headers = hermesHeaders();
-      try {
-        let health = await fetch(`${hermesBase}/health`, { headers, signal: AbortSignal.timeout(3000) });
-        if (health.status === 404 || health.status === 405) health = await fetch(`${hermesBase}/v1/models`, { headers, signal: AbortSignal.timeout(3000) });
-        if (!health.ok) return json(res, 502, { error: 'Hermes ist nicht erreichbar.' });
-        try {
-          const capabilities = await fetch(`${hermesBase}/v1/capabilities`, { headers, signal: AbortSignal.timeout(3000) });
-          if (capabilities.ok) {
-            const payload = await capabilities.json();
-            hermesFeatures = payload.features || {};
-            featuresCheckedAt = Date.now();
-          }
-        } catch { /* Keep OpenAI-compatible chat available if this Hermes version has no capabilities route. */ }
-        return json(res, 200, { status: 'ok', features: hermesFeatures });
-      } catch { return json(res, 502, { error: 'Hermes ist nicht erreichbar.' }); }
+      const result = await probeHermes(hermesBase, hermesApiKey);
+      return json(res, result.ok ? 200 : 503, result);
     }
     if (req.method === 'GET' && url.pathname === '/api/sessions') return json(res, 200, store.sessions.map(({ id, title, updatedAt }) => ({ id, title, updatedAt })).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
     if (req.method === 'POST' && url.pathname === '/api/sessions') {

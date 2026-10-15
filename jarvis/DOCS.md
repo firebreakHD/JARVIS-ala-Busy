@@ -38,6 +38,10 @@ Die Reihenfolge der Zeilen kann abweichen. Bleiben die alten Werte nach einem Up
 
 ## Prüfung
 
+Ab `0.1.3` zeigt JARVIS den Grund einer fehlgeschlagenen Hermes-Verbindung über dem Chat. In der JARVIS-Konfiguration muss `hermes_base_url` auf den API-Server zeigen: intern `http://<tatsächlicher-HA-DNS-Name>:8642`, alternativ `http://<HA-IP>:<veröffentlichter-API-Port>`. `localhost` bezeichnet im JARVIS-Container JARVIS selbst. Der Hermes-WebUI-Port und eine HA-Ingress-URL sind keine API-Adresse. Den tatsächlichen DNS-Namen aus HA übernehmen, nicht die Repository-ID raten. `hermes_api_key` muss dem bei Hermes eingerichteten `api_server_key` entsprechen. Geheimnisse nicht in Chat oder Logs kopieren. Nach einer Änderung der Add-on-Optionen JARVIS neu starten und mit ↻ die Verbindung erneut prüfen.
+
+Die Prüfung ruft ausschließlich `GET /v1/models` auf und führt keine Agentenaktion aus. Ein erfolgreicher API-Status bestätigt Erreichbarkeit und Schlüssel, aber noch keine erfolgreiche LLM-Anmeldung oder Tool-Ausführung. Dafür ist ein echter Chat-Test nötig.
+
 Im Verzeichnis `jarvis` führt `npm test` die Zugriffstests aus. Sie prüfen Ingress-Pfade, die Supervisor-Erkennung, Ablehnung gefälschter Proxy-Header, beide Listener, Passwortschutz, JavaScript/CSS-Auslieferung und Sitzungsdaten nach Serverneustart. Testdaten liegen in einem isolierten, automatisch entfernten Unterordner von `jarvis/data/`. Eine echte HA-Installation und Hermes-Verbindung sind zusätzlich am Zielgerät zu prüfen.
 
 GitHub Actions führt zusätzlich `bash jarvis/test/container-startup.sh` vom Repository-Stamm aus. Dieser Test baut das Dockerimage und startet es über dessen echten s6-Einstiegspunkt, ohne die Add-on-Umgebung manuell in Node zu setzen. Er prüft die erreichbaren Listener und `/data` als Datenpfad. Lokal benötigt dieser Test einen laufenden Docker-Daemon.
