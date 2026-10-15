@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.4 – 2026-10-15
+
+- Kontextuelle Tool-Karten nach lesender Analyse der ADA-Referenz: erscheinen nur bei tatsächlichen Hermes-Toolereignissen, zeigen Lauf-/Abschluss-/Fehlerzustand und blenden sich nach acht Sekunden ohne aktive Tools aus.
+- Ausgeblendete Aktivitäten lassen sich über den neuen Aktivitätsknopf wieder öffnen. Sitzungswechsel, neue Anfrage und Abmeldung trennen die Anzeigen; verspätete alte Streams werden ignoriert.
+- Bestehendes Chatdesign bleibt erhalten. Die Aktivitätsfläche sitzt oberhalb der Eingabe, ist in der Höhe begrenzt und verwendet mobil eine Spalte.
+- Runs-Proxy reicht Tool-Lebenszyklus ohne rohe Argumente/Ergebnisse weiter. Standard-Chatstreams mit `hermes.tool.progress` werden ebenfalls angezeigt. Toolaktionen werden ausschließlich von Hermes ausgeführt.
+- Fehlende Abschlussereignisse werden nicht als Erfolg dargestellt. SSE-Ereignisnamen, mehrzeilige Daten und letzte Frames ohne abschließende Leerzeile werden verarbeitet.
+- Browserdienst ist damit noch nicht installiert. Analyse und geplanter Integrationsweg stehen in DOCS.md.
+
 ## 0.1.3 – 2026-10-15
 
 - Hermes-Prüfung testet die geschützte API-Modellliste und unterscheidet fehlende Konfiguration, abgelehnte Schlüssel, falsche API-Adressen, DNS-Fehler, geschlossene Ports und Zeitüberschreitungen.

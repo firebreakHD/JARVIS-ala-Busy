@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { isSupervisor, renderIndex } from './web-access.mjs';
 import { normalizeHermesBase, probeHermes } from './hermes-connection.mjs';
+import { parseSseFrame, normalizeToolEvent } from './public/tool-events.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(root, 'public');
@@ -174,13 +175,15 @@ const handleRequest = async (req, res) => {
           while (!terminal) {
             const { value, done } = await reader.read(); buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
             const frames = buffer.split(/\r?\n\r?\n/); buffer = frames.pop() || '';
+            if (done && buffer.trim()) { frames.push(buffer); buffer = ''; }
             for (const frame of frames) {
-              const eventName = frame.match(/^event:\s*(.+)$/m)?.[1]?.trim() || '';
-              const payloadLine = frame.split(/\r?\n/).find((line) => line.startsWith('data:'));
-              if (!payloadLine) continue;
-              const raw = payloadLine.slice(5).trim(); if (!raw || raw === '[DONE]') continue;
+              const parsed = parseSseFrame(frame);
+              const eventName = parsed.name;
+              const raw = parsed.data.trim(); if (!raw || raw === '[DONE]') continue;
               let payload; try { payload = JSON.parse(raw); } catch { continue; }
               const kind = eventName || payload.event || payload.type || '';
+              const tool = normalizeToolEvent(kind, payload);
+              if (tool && !controller.signal.aborted && !res.destroyed) res.write(`event: jarvis.tool\ndata: ${JSON.stringify(tool)}\n\n`);
               const delta = kind === 'message.delta' ? (payload.text ?? payload.delta ?? payload.content ?? '') : '';
               if (typeof delta === 'string' && delta && !controller.signal.aborted && !res.destroyed) {
                 sentText = true;
@@ -279,7 +282,7 @@ function run(command, args) {
   });
 }
 
-server.listen(port, host, () => console.log(`J.A.R.V.I.S. listening on ${host}:${port}; data: ${dataDir}`));
+server.listen(port, host, () => console.log(`J.A.R.V.I.S. listening on ${host}:${server.address().port}; data: ${dataDir}`));
 
 if (addonMode) {
   const ingressPort = Number(process.env.INGRESS_PORT || 8099);

@@ -1,4 +1,8 @@
 import { apiUrl } from './api-url.mjs';
+import { parseSseFrame, normalizeToolEvent } from './tool-events.mjs';
+import { createToolActivity } from './tool-activity.mjs';
+
+const activity = createToolActivity();
 
 const $ = (selector) => document.querySelector(selector);
 const ui = {
@@ -47,6 +51,7 @@ function stopAudio() {
   ui.stopAudio.classList.remove('is-active');
 }
 function interruptGeneration() {
+  activity.finish(true);
   generation++;
   if (activeRequest) { activeRequest.abort(); activeRequest = null; }
   ui.stopGeneration.hidden = true;
@@ -111,12 +116,13 @@ async function refreshSessions() {
 }
 async function createSession() {
   stopEverything();
+  activity.reset();
   currentSession = await api('/api/sessions', { method: 'POST', body: '{}' });
   renderMessages(); await refreshSessions(); ui.input.focus();
 }
 async function openSession(id) {
   try {
-    stopEverything(); currentSession = await api(`/api/sessions/${id}`); prefs.set('session', currentSession.id); renderMessages(); await refreshSessions();
+    stopEverything(); activity.reset(); currentSession = await api(`/api/sessions/${id}`); prefs.set('session', currentSession.id); renderMessages(); await refreshSessions();
     $('#sidebar').classList.remove('open');
   } catch (error) { notify(error.message); }
 }
@@ -189,6 +195,7 @@ async function sendMessage(text) {
   const prompt = text.trim(); if (!prompt) return;
   if (!currentSession) await createSession();
   stopAudio(); interruptGeneration();
+  activity.reset();
   ui.voiceSetup.hidden = true;
   appendMessage('user', prompt);
   if (currentSession.messages.filter((message) => message.role === 'user').length === 1) {
@@ -208,25 +215,29 @@ async function sendMessage(text) {
     while (!finished) {
       const { value, done } = await reader.read(); buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
       const parts = buffer.split(/\r?\n\r?\n/); buffer = parts.pop() || '';
+      if (done && buffer.trim()) { parts.push(buffer); buffer = ''; }
       for (const part of parts) {
-        for (const line of part.split(/\r?\n/)) {
-          if (!line.startsWith('data:')) continue;
-          const data = line.slice(5).trim(); if (!data || data === '[DONE]') { finished ||= data === '[DONE]'; continue; }
+          if (thisGeneration !== generation) return;
+          const frame = parseSseFrame(part);
+          const data = frame.data.trim(); if (!data || data === '[DONE]') { finished ||= data === '[DONE]'; continue; }
           let event;
           try { event = JSON.parse(data); } catch { continue; }
+          const tool = normalizeToolEvent(frame.name || event.event || event.type, event);
+          if (tool) { activity.event(tool); continue; }
           if (event.error) throw new Error(event.error);
           const delta = event.choices?.[0]?.delta?.content;
           if (typeof delta === 'string' && delta) { if (thisGeneration !== generation) return; assistant.content += delta; queueSpeech(delta); renderMessages(); }
-        }
       }
       if (done) break;
     }
     if (thisGeneration !== generation) return;
+    activity.finish();
     if (speechBuffer.trim()) { enqueueUtterance(speechBuffer.trim()); speechBuffer = ''; }
     assistant.pending = false; activeRequest = null; ui.stopGeneration.hidden = true; renderMessages(); await saveSession();
     if (!assistant.content) notify('Hermes hat eine leere Antwort gesendet.');
   } catch (error) {
     if (error.name === 'AbortError' || thisGeneration !== generation) return;
+    activity.finish(true);
     assistant.pending = false; assistant.error = true; assistant.content = error.message; activeRequest = null; ui.stopGeneration.hidden = true;
     if (voiceMode) ui.voiceStatus.textContent = 'Verbindung unterbrochen · ich höre weiter zu';
     renderMessages(); await saveSession();
@@ -328,7 +339,7 @@ $('#login-form').addEventListener('submit', async (event) => {
   catch (error) { $('#login-error').textContent = error.message; $('#login-password').focus(); }
 });
 $('#logout').addEventListener('click', async () => {
-  stopEverything(); endVoiceMode(false);
+  stopEverything(); activity.reset(); endVoiceMode(false);
   try { await api('/api/logout', { method: 'POST', body: '{}' }); $('#auth-screen').hidden = false; $('#login-password').focus(); }
   catch (error) { notify(error.message); }
 });

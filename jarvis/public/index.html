@@ -45,6 +45,7 @@
           <button class="mode-tab" id="voice-mode" role="tab" aria-selected="false">◉ <span>Voice Mode</span></button>
         </div>
         <div class="top-actions">
+          <button class="activity-toggle" id="activity-toggle" aria-controls="tool-activity" aria-expanded="false" hidden>Aktivität</button>
           <button class="icon-button audio-stop" id="stop-audio" title="Sprachausgabe stoppen" aria-label="Sprachausgabe stoppen">■</button>
           <button class="icon-button" id="settings-toggle" title="Audioeinstellungen" aria-label="Audioeinstellungen">⚙</button>
         </div>
@@ -69,6 +70,10 @@
       </div>
 
       <footer class="composer-area">
+        <section class="tool-activity" id="tool-activity" aria-label="Hermes-Werkzeuge" hidden>
+          <header class="tool-activity-head"><div><strong>Hermes arbeitet</strong><span id="tool-activity-status" role="status"></span></div><button id="activity-close" aria-label="Tool-Aktivität ausblenden">×</button></header>
+          <div class="tool-activity-list" id="tool-activity-list"></div>
+        </section>
         <div class="voice-banner" id="voice-banner" hidden><span class="live-pulse"></span><span id="voice-status">Voice Mode ist bereit</span><button class="text-button" id="mute-mic">Mikrofon stummschalten</button><button class="text-button danger-text" id="end-voice">Beenden</button></div>
         <div class="voice-setup" id="voice-setup" hidden><div class="mic-symbol">◉</div><div><strong>Freies Sprechen starten</strong><p>Das Mikrofon wird erst nach deinem Klick aktiviert. Sprache wird lokal mit Whisper.cpp erkannt.</p></div><button class="primary-button" id="start-voice">Voice Mode starten</button></div>
         <form class="composer" id="composer">

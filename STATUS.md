@@ -2,6 +2,8 @@
 
 ## Implementiert
 
+- `0.1.4`: bedarfsabhängige Hermes-Toolanzeige nach ADA-Verhalten im bestehenden Chatlayout. Zehn lokale Tests bestehen, einschließlich HTTP-Streaming gegen einen isolierten Testserver. Desktop und 390-Pixel-Mobilansicht im Browser geprüft; der Live-Tooltest am HA-Gerät steht aus.
+
 - Responsiver Desktop-Textchat mit Streaming, Unterbrechung und persistenten Sitzungen.
 - Automatische lokale TTS-Ausgabe mit Ein/Aus, Lautstärke und Geräte-Stimmenwahl.
 - Separater mobiler Voice Mode mit Mikrofonfreigabe nach Nutzerklick und lokaler Whisper.cpp-Transkription.
@@ -12,6 +14,8 @@
 - CSS-Vorschau funktioniert auch beim direkten Öffnen der HTML-Datei; für API und Chat muss der Server laufen.
 
 ## Noch offen
+
+- Permanenter gemeinsamer Browser, abgesicherte manuelle Übernahme, Browserprofile und Browser-MCP sind noch nicht implementiert. Phase-1-Befunde und Umsetzungsschritte stehen in jarvis/DOCS.md. SSH/Terminalzugang und tatsächliche Serverressourcen sind noch ungeklärt; lokal ist der Docker-Daemon nicht erreichbar.
 
 - `0.1.3` verbessert die Hermes-Verbindungsdiagnose und korrigiert die Wartezeit. Sechs lokale Tests bestehen; echte Hermes-Adresse und Konfiguration auf dem HA-Gerät sind noch nicht bekannt. Eine funktionierende Live-Verbindung ist nicht nachgewiesen.
 

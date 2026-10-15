@@ -68,3 +68,56 @@ Danach `http://localhost:8787` öffnen. Ohne `JARVIS_ACCESS_PASSWORD` bindet der
 - Die Hermes-Run-Stop-Funktion wird verwendet, wenn der konfigurierte Hermes-Server sie anbietet. Eine ältere OpenAI-kompatible Schnittstelle kann serverseitige Tool-Aktionen nicht immer stoppen.
 
 Alle Sprachpfade bleiben lokal; das Add-on ruft keine kostenpflichtigen TTS- oder STT-APIs auf.
+
+## Tool-Aktivität nach ADA-Verhalten (0.1.4)
+
+Die ADA-/AURA_ADA-Referenz wurde ausschließlich gelesen. Übernommen wurde das Verhalten der temporären Aktivitätsanzeige. Das bestehende Chatlayout, Farben, Sitzungsnavigation und Voice-/Chat-Modi bleiben bestehen. Tool-Karten stehen oberhalb der Eingabe; mobil sind sie einspaltig und in der Höhe begrenzt. Die neue Aktivitäts-Schaltfläche blendet sie wieder ein.
+
+Nur tatsächlich empfangene Ereignisse erzeugen Karten: `tool.started`, `tool.completed`, `tool.failed` aus dem Runs-Stream sowie `hermes.tool.progress` aus Standard-Chatstreams. Starts und Abschlüsse werden nach Toolname beziehungsweise vorhandener Call-ID zugeordnet. Parallele Aufrufe bleiben getrennt. Nach Abschluss aller sichtbaren Aufrufe verschwindet die Fläche nach acht Sekunden. Während Maus-/Tastaturinteraktion wird der Timer angehalten. Rohes Tool-HTML, Argumente und Ergebnisse werden nicht in Karten übernommen. Bei älteren Chatstreams ohne Abschlussereignis lautet der Zustand ehrlich „Ausgabe beendet · Ergebnis nicht gemeldet“. Ein Text wie „ich öffne den Browser“ erzeugt keine erfundene Toolaktion.
+
+Ein generisches Toolereignis bestätigt noch keine Browserinstallation oder erfolgreiche Aktion auf einer Website. JARVIS zeigt den von Hermes gemeldeten Werkzeugzustand; ein fachliches Ergebnis wie „Account blockiert“ muss Hermes selbst an der Website verifizieren. Die Oberfläche ruft zur Darstellung keine Tools erneut auf.
+
+## Permanenter Browser: Phase 1 vom 15.10.2026
+
+### Verifizierte Umgebung
+
+- Auf dem HA-Host 192.168.1.184 antworten zum Prüfzeitpunkt Home Assistant auf 8123, der JARVIS-Anmeldestatus auf 8787 und Hermes auf 8642. Der öffentliche Hermes-Gesundheitsstatus meldet Agent-Version 0.22.2. Geschützte Capabilities antworten ohne Schlüssel mit 401; es wurden keine Zugangsdaten ausgelesen.
+- Ein öffentlicher CDP-Port 9222 nimmt vom PC keine Verbindung an. Daraus folgt nicht, dass intern kein Browser existiert.
+- Der lokale Hermes-Add-on-Checkout deklariert 2.0.4. Er startet den offiziellen Agenten/Gateway und die separate WebUI, speichert Daten unter /data/hermes und unterstützt MCP-Konfiguration. Browserinstallation wird beim Erstsetup mit --skip-browser ausgelassen. Auto-Updates können den laufenden Agenten über den Image-Seed hinaus aktualisieren.
+- JARVIS verwendet dieselbe Hermes-API für Chat und Voice. Die Oberfläche nutzt lokale Browser-TTS; Konfiguration und JSON-Sitzungsdaten liegen im Add-on unter /data. Es gibt aktuell keinen Browserdienst, keine Browsersteuerung und kein integriertes Browser-MCP in JARVIS.
+- Auf dem Windows-PC sind Node und die Docker-CLI vorhanden; der Docker-Daemon ist nicht erreichbar. Das ist keine Prüfung des HA-Host-Dockers. Die verfügbaren Ressourcen, laufenden Container, Browserpakete und freien internen Serverports sind ohne authentifizierten Serverzugang noch unbekannt.
+- ADA ist eine Electron-/Python-Referenz. Daraus werden keine Providerzugänge, Agentenarchitektur, Electron-Prozesse oder kostenpflichtigen Sprachdienste übernommen.
+
+### Gewählter Integrationsweg mit noch offenem Laufzeittest
+
+Ein eigener Browserdienst wird als separates HA-Add-on im JARVIS-Repository vorbereitet. Er soll unabhängig von Chat, JARVIS-Neustarts und einzelnen Hermes-Aufträgen laufen. Das bestehende Hermes-Add-on wird nicht ersetzt und seine Dateien werden nicht durch dieses Projekt geändert.
+
+Geplant ist ein sichtbarer Chromium-Prozess auf einem virtuellen Linux-Display, grafischer Zugang über noVNC und Steuerung derselben Chromium-Instanz über eine lokale CDP-Verbindung. Ein dedizierter Vermittlungsdienst stellt die von Hermes nutzbaren Browser-Tools über dessen vorhandene HTTP-MCP-Schnittstelle bereit. Damit kann er jede Aktion vor Ausführung gegen den Eigentümermodus prüfen. CDP und VNC bleiben intern; weder ein roher Debug-Port noch ein Docker-Socket wird im LAN freigegeben. Es läuft zunächst nur ein Browserprofil gleichzeitig. Profilwechsel beendet die bisherige Instanz geordnet und verwendet getrennte persistente Profilverzeichnisse.
+
+Die vorhandenen nativen Hermes-CDP-Tools werden bei der Umsetzung zuerst gegen die tatsächlich installierte Version geprüft. Ein unkontrollierter direkter CDP-Zugang wäre für die geforderte harte manuelle Sperre ungeeignet: Er könnte an der Kontrolle des Vermittlers vorbei Eingaben senden. Der integrierte Browser darf daher ausschließlich über die geprüfte Steuerung erreichbar sein. Eine Anweisung im Prompt ist kein Ersatz für diese Sperre.
+
+LinuxServer Chromium/Selkies wurde als Alternative geprüft: Es bringt GUI und persistente Konfiguration mit. Vor einem Einsatz müssten jedoch Terminal-/sudo-Zugänge gesperrt, die gemeinsame CDP-Sitzung und eine serverseitige Eingabesperre nachgewiesen werden. Ein bloßer eingebetteter Selkies-Link erfüllt die Anforderungen an sichere Übergabe noch nicht. Der schmalere noVNC-Dienst ist deshalb die bevorzugte Umsetzung, vorbehaltlich des Sandbox-/AppArmor-Tests auf HA OS. Chromium soll als eigener unprivilegierter Benutzer mit Sandbox laufen; keine pauschalen --privileged-/--no-sandbox-Workarounds.
+
+Steuerung ist eine deterministische Zustandsmaschine, keine zweite KI: `agent`, `manual`, `paused`, mit Revisionsnummer und laufender Aktionssperre. Bei Übernahme werden neue Agentenaktionen gesperrt und laufende Aktionen geordnet angehalten beziehungsweise abgebrochen. Erst nach bestätigter Freigabe erhält die GUI Eingaberechte. Ein Verlust der Verbindung führt sicher zu paused. Bei Rückgabe werden Elementreferenzen ungültig; vor jeder neuen Aktion ist eine frische Zustandsaufnahme erforderlich. Downloads oder bereits abgeschickte Serveraktionen lassen sich nicht rückwirkend ungeschehen machen.
+
+Browseransicht und Tool-Karten übernehmen das heutige JARVIS-Design. Mobile nutzt eine begrenzte Vollbreitenansicht oder öffnet den authentifizierten GUI-Zugang in einem separaten Tab. Es gibt keinen optischen Neubau des Chats und keine dauerhaft sichtbaren Leerflächen für ungenutzte Tools.
+
+Profile, Aufgaben-/Schrittfortschritt, Tab-Wiederherstellung und Datensätze liegen persistent beim Browserdienst. Strukturierte Messungen verwenden SQLite mit Quelle, Profil, Zeitstempel, Schema, Eindeutigkeitsschlüssel und Status fehlender Werte. Browserprofile werden nur bei gestopptem Browser oder konsistentem Snapshot gesichert; keine Veröffentlichung von Cookies oder Tokens. Ein Wiederherstellen offener Tabs darf keine Formularaktionen erneut absenden.
+
+### Reihenfolge und Abnahmekriterien
+
+1. Serverprüfung: vorhandenen SSH-/Terminalzugang verwenden; Agent-Version, Browser-/MCP-Werkzeuge, freie Ports, RAM/CPU/Platte und HA-Sandbox feststellen. Keine Änderungen an Fremdprojekten und keine Ausgabe von Secrets. Erst danach Image-/Paketversionen festlegen.
+2. Browserdienst: isoliertes Add-on mit persistentem Profil und authentifizierter GUI bauen. Tests A und F (Profil nach Neustart, unabhängiger Neustart) müssen auf der Zielumgebung bestehen, bevor die nächste Phase freigegeben wird. Autostart über HA, Browserressourcen zunächst mit einer aktiven Instanz begrenzen; belastbare RAM-/CPU-Grenzen an den gemessenen Hostwerten festmachen.
+3. Hermes-Anbindung: authentifizierten Browser-MCP registrieren und eine lokale Testseite bedienen (Test B). Die Registrierung in Hermes braucht eine ausdrücklich abgestimmte Einrichtung durch den Nutzer; dieses Projekt schreibt keine Hermes-Konfigurationsdateien. Bestehende MCP-Einträge bleiben erhalten.
+4. Übergabe: kontrollierte Rennen zwischen Agentaktion, Übernehmen, Zurückgeben und Verbindungsverlust testen. Manuell und durch Hermes denselben Tab verändern und Identität prüfen (Tests C und D). Erst dann Übernahme als funktionsfähig anzeigen.
+5. UI: authentifizierte Liveansicht, Status und echte Aktionen für übernehmen/pausieren/fortsetzen/abbrechen integrieren. Nicht unterstützte Hermes-Laufsteuerungen nicht als funktionsfähige Buttons darstellen. Job und Browser besitzen getrennte Zustände.
+6. Daten und Wiederholungen: SQLite-Messungen/Schrittjournal mit Dublettenschutz testen (Test E). Wiederholungen ausschließlich über vorhandene Hermes-Scheduler auslösen. Keine automatische TikTok-Überwachung oder Accountaktion ohne konkreten Auftrag einrichten. Anmeldungen/Captchas manuell, Veröffentlichungen/Accountänderungen nach den erforderlichen Freigaben.
+7. Gesamtabnahme: Tests A–F, HTTPS-/HA-Ingress-Zugang, Mobilansicht, Backup/Restore, Token-/Origin-Prüfung, Profiltrennung und Ressourcenlast dokumentieren. Die ADA-inspirierte Toolanzeige allein gilt nicht als Abnahme der Browserintegration.
+
+Aktuelle Grenze: Phase 1 ist lokal und anhand öffentlicher Statusendpunkte untersucht. Authentifizierte Serverdiagnose und Phase-2-Containertest stehen aus. Es wurde kein Browser auf HA installiert und kein Hermes-MCP registriert. Die UI-Erweiterung 0.1.4 ist unabhängig davon lokal getestet.
+
+Quellen zur Architektur:
+- Offizielle Hermes-Browser-Dokumentation am Image-Seed: https://raw.githubusercontent.com/NousResearch/hermes-agent/0e427d788d253630d38a3a51cd76849e73cd6925/website/docs/user-guide/features/browser.md
+- Offizielle Hermes-MCP-Dokumentation am Image-Seed: https://raw.githubusercontent.com/NousResearch/hermes-agent/0e427d788d253630d38a3a51cd76849e73cd6925/website/docs/user-guide/features/mcp.md
+- Hermes-API-Ereignisse: https://github.com/NousResearch/hermes-agent/blob/0e427d788d253630d38a3a51cd76849e73cd6925/gateway/platforms/api_server_runs.py
+- LinuxServer Chromium/Selkies: https://docs.linuxserver.io/images/docker-chromium/
